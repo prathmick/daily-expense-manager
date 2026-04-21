@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kiro specs (optional - remove if you want to keep them)
+# .kiro/
