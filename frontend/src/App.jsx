@@ -15,10 +15,10 @@ function PrivateRoute({ children }) {
 
 function PrivateLayout({ children }) {
   return (
-    <>
+    <div style={{ paddingBottom: 70 }}>
       <NavBar />
-      <main>{children}</main>
-    </>
+      {children}
+    </div>
   );
 }
 
