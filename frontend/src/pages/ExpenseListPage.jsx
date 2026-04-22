@@ -83,14 +83,14 @@ export default function ExpenseListPage() {
       {/* ── Balance Hero Card ── */}
       <div style={{
         background: "linear-gradient(135deg,#0f172a,#1e293b)",
-        borderRadius: 20, padding: "20px", marginBottom: 20, color: "#fff",
+        borderRadius: 16, padding: "16px", marginBottom: 14, color: "#fff",
         position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
           <div>
-            <p style={{ margin: "0 0 4px", fontSize: 12, opacity: 0.6, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>Current Balance</p>
-            <div style={{ fontSize: 32, fontWeight: 800, color: balColor, letterSpacing: "-0.5px" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, opacity: 0.6, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>Current Balance</p>
+            <div style={{ fontSize: 26, fontWeight: 800, color: balColor, letterSpacing: "-0.5px" }}>
               {balanceData ? fmt(balanceData.current_balance) : "—"}
             </div>
             <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
@@ -136,8 +136,8 @@ export default function ExpenseListPage() {
       </div>
 
       {/* ── Header ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1a1d2e" }}>Expenses</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1a1d2e" }}>Expenses</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setShowFilters(f => !f)} style={{
             padding: "9px 14px", background: showFilters ? "#ede9fe" : "#f1f5f9",

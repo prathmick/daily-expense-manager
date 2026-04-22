@@ -104,18 +104,18 @@ export default function AuthPage() {
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "24px 16px",
+      padding: "16px",
     }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 52, marginBottom: 8 }}>💰</div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#fff" }}>Expense Manager</h1>
-          <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 14 }}>Track every rupee, every day</p>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 44, marginBottom: 6 }}>💰</div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#fff" }}>Expense Manager</h1>
+          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>Track every rupee, every day</p>
         </div>
 
         {/* Card */}
-        <div style={{ background: "#fff", borderRadius: 24, padding: "32px 28px", boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
+        <div style={{ background: "#fff", borderRadius: 20, padding: "24px 20px", boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
           {/* Tabs */}
           <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 4, marginBottom: 28 }}>
             {["login", "register"].map(m => (

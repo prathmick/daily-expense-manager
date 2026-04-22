@@ -69,7 +69,7 @@ export default function ExpenseFormModal({ isOpen, onClose, onSuccess, expense }
       zIndex: 1000, backdropFilter: "blur(4px)",
     }}>
       <div style={{
-        background: "#fff", borderRadius: "24px 24px 0 0", padding: "24px 20px 32px",
+        background: "#fff", borderRadius: "20px 20px 0 0", padding: "20px 16px 28px",
         width: "100%", maxWidth: 520,
         boxShadow: "0 -8px 40px rgba(0,0,0,0.2)",
         maxHeight: "92vh", overflowY: "auto",
