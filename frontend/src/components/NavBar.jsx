@@ -88,7 +88,8 @@ export default function NavBar() {
 
         @media (max-width: 767px) {
           .top-navbar-hamburger { display: block; }
-          .top-navbar-desktop { display: none; }
+          .top-navbar-desktop { display: none !important; }
+          .top-navbar { display: none !important; }
         }
       `}</style>
 

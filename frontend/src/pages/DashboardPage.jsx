@@ -54,8 +54,9 @@ export default function DashboardPage() {
           { label:"This Month", val: data.month_total,  icon:"📆",  color:"#4f46e5" },
         ].map(({ label, val, icon, color }) => (
           <div key={label} className="stat-card">
+            <div style={{ fontSize:18, marginBottom:4 }}>{icon}</div>
             <div className="stat-card-label">{label}</div>
-            <div className="stat-card-value" style={{ color, fontSize:15 }}>{fmt(val)}</div>
+            <div className="stat-card-value" style={{ color, fontSize:14 }}>{fmt(val)}</div>
           </div>
         ))}
       </div>

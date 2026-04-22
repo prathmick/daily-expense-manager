@@ -278,11 +278,53 @@ input, textarea, select {
   .bottom-nav { display: none; }
 }
 
+/* Hide top navbar on mobile — bottom nav takes over */
 @media (max-width: 767px) {
-  .top-navbar { display: none !important; }
+  .top-navbar {
+    display: none !important;
+  }
 }
 
 @media (display-mode: standalone) {
   body { user-select: none; -webkit-user-select: none; }
   input, textarea { user-select: text; -webkit-user-select: text; }
+}
+
+/* ── Auth page mobile full-screen ── */
+.auth-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-logo {
+  text-align: center;
+  padding: 48px 20px 24px;
+  flex-shrink: 0;
+}
+
+.auth-card {
+  background: #fff;
+  flex: 1;
+  border-radius: 24px 24px 0 0;
+  padding: 28px 20px 40px;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
+}
+
+@media (min-width: 640px) {
+  .auth-wrapper {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-logo { padding: 0 0 24px; }
+  .auth-card {
+    flex: none;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+  }
 }
