@@ -1,387 +1,208 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import apiClient from "../api/apiClient";
 
-const styles = {
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "100vh",
-    backgroundColor: "#f5f5f5",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    padding: "32px",
-    width: "100%",
-    maxWidth: "400px",
-  },
-  tabs: {
-    display: "flex",
-    marginBottom: "24px",
-    borderBottom: "2px solid #e0e0e0",
-  },
-  tab: {
-    flex: 1,
-    padding: "10px",
-    border: "none",
-    background: "none",
-    cursor: "pointer",
-    fontSize: "16px",
-    fontWeight: "500",
-    color: "#666",
-    borderBottom: "2px solid transparent",
-    marginBottom: "-2px",
-  },
-  activeTab: {
-    color: "#1976d2",
-    borderBottom: "2px solid #1976d2",
-  },
-  field: {
-    marginBottom: "16px",
-  },
-  label: {
-    display: "block",
-    marginBottom: "4px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#333",
-  },
-  input: {
-    width: "100%",
-    padding: "8px 12px",
-    border: "1px solid #ccc",
-    borderRadius: "4px",
-    fontSize: "14px",
-    boxSizing: "border-box",
-  },
-  inputError: {
-    borderColor: "#d32f2f",
-  },
-  errorText: {
-    color: "#d32f2f",
-    fontSize: "12px",
-    marginTop: "4px",
-  },
-  successText: {
-    color: "#388e3c",
-    fontSize: "14px",
-    marginBottom: "12px",
-    textAlign: "center",
-  },
-  apiError: {
-    color: "#d32f2f",
-    fontSize: "14px",
-    marginBottom: "12px",
-    textAlign: "center",
-  },
-  submitBtn: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#1976d2",
-    color: "#fff",
-    border: "none",
-    borderRadius: "4px",
-    fontSize: "16px",
-    cursor: "pointer",
-    marginTop: "8px",
-  },
-  submitBtnDisabled: {
-    backgroundColor: "#90caf9",
-    cursor: "not-allowed",
-  },
-};
-
-function validateEmail(value) {
-  if (!value) return "Email is required";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Must be a valid email address";
+function validateEmail(v) {
+  if (!v) return "Email is required";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Enter a valid email";
+  return "";
+}
+function validatePassword(v, isReg) {
+  if (!v) return "Password is required";
+  if (isReg && v.length < 8) return "At least 8 characters";
+  return "";
+}
+function validateName(v) {
+  if (!v?.trim()) return "Name is required";
   return "";
 }
 
-function validatePassword(value, isRegister) {
-  if (!value) return "Password is required";
-  if (isRegister && value.length < 8) return "Password must be at least 8 characters";
-  return "";
-}
-
-function validateDisplayName(value) {
-  if (!value || !value.trim()) return "Display name is required";
-  return "";
+function Field({ label, id, error, touched, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label htmlFor={id} style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
+        {label}
+      </label>
+      {children}
+      {touched && error && (
+        <p style={{ margin: "5px 0 0", fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+          ⚠ {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  const [mode, setMode] = useState("login"); // "login" | "register"
-  const [successMessage, setSuccessMessage] = useState("");
+  const [mode, setMode] = useState("login");
   const [apiError, setApiError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Login form state
-  const [loginFields, setLoginFields] = useState({ email: "", password: "" });
-  const [loginErrors, setLoginErrors] = useState({ email: "", password: "" });
-  const [loginTouched, setLoginTouched] = useState({ email: false, password: false });
+  const [lf, setLf] = useState({ email: "", password: "" });
+  const [le, setLe] = useState({ email: "", password: "" });
+  const [lt, setLt] = useState({ email: false, password: false });
 
-  // Register form state
-  const [regFields, setRegFields] = useState({ displayName: "", email: "", password: "" });
-  const [regErrors, setRegErrors] = useState({ displayName: "", email: "", password: "" });
-  const [regTouched, setRegTouched] = useState({ displayName: false, email: false, password: false });
+  const [rf, setRf] = useState({ name: "", email: "", password: "" });
+  const [re, setRe] = useState({ name: "", email: "", password: "" });
+  const [rt, setRt] = useState({ name: false, email: false, password: false });
 
-  const switchMode = (newMode) => {
-    setMode(newMode);
-    setApiError("");
-    setSuccessMessage("");
-  };
+  const switchMode = (m) => { setMode(m); setApiError(""); setSuccess(""); };
 
-  // --- Login handlers ---
-  const handleLoginChange = (e) => {
-    const { name, value } = e.target;
-    setLoginFields((prev) => ({ ...prev, [name]: value }));
-    if (loginTouched[name]) {
-      validateLoginField(name, value);
-    }
-  };
-
-  const validateLoginField = useCallback((name, value) => {
-    let error = "";
-    if (name === "email") error = validateEmail(value);
-    if (name === "password") error = validatePassword(value, false);
-    setLoginErrors((prev) => ({ ...prev, [name]: error }));
-    return error;
+  const validateLogin = useCallback((name, val) => {
+    const err = name === "email" ? validateEmail(val) : validatePassword(val, false);
+    setLe(p => ({ ...p, [name]: err }));
+    return err;
   }, []);
 
-  const handleLoginBlur = (e) => {
-    const { name, value } = e.target;
-    setLoginTouched((prev) => ({ ...prev, [name]: true }));
-    setTimeout(() => {
-      validateLoginField(name, value);
-    }, 0); // within 100ms — synchronous but deferred to next tick
-  };
+  const validateReg = useCallback((name, val) => {
+    const err = name === "name" ? validateName(val) : name === "email" ? validateEmail(val) : validatePassword(val, true);
+    setRe(p => ({ ...p, [name]: err }));
+    return err;
+  }, []);
 
-  const handleLoginSubmit = async (e) => {
+  async function handleLogin(e) {
     e.preventDefault();
     setApiError("");
-    // Validate all fields
-    const emailErr = validateEmail(loginFields.email);
-    const passErr = validatePassword(loginFields.password, false);
-    setLoginErrors({ email: emailErr, password: passErr });
-    setLoginTouched({ email: true, password: true });
-    if (emailErr || passErr) return;
-
+    const ee = validateEmail(lf.email), pe = validatePassword(lf.password, false);
+    setLe({ email: ee, password: pe });
+    setLt({ email: true, password: true });
+    if (ee || pe) return;
     setLoading(true);
     try {
-      const response = await apiClient.post("/auth/login", {
-        email: loginFields.email,
-        password: loginFields.password,
-      });
-      login(response.data);
+      const res = await apiClient.post("/auth/login", { email: lf.email, password: lf.password });
+      login(res.data);
       navigate("/dashboard");
     } catch (err) {
-      if (err.response?.status === 401) {
-        setApiError("Invalid email or password");
-      } else {
-        setApiError(err.response?.data?.detail || "Login failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+      setApiError(err.response?.status === 401 ? "Invalid email or password" : err.response?.data?.detail || "Login failed");
+    } finally { setLoading(false); }
+  }
 
-  // --- Register handlers ---
-  const handleRegChange = (e) => {
-    const { name, value } = e.target;
-    setRegFields((prev) => ({ ...prev, [name]: value }));
-    if (regTouched[name]) {
-      validateRegField(name, value);
-    }
-  };
-
-  const validateRegField = useCallback((name, value) => {
-    let error = "";
-    if (name === "displayName") error = validateDisplayName(value);
-    if (name === "email") error = validateEmail(value);
-    if (name === "password") error = validatePassword(value, true);
-    setRegErrors((prev) => ({ ...prev, [name]: error }));
-    return error;
-  }, []);
-
-  const handleRegBlur = (e) => {
-    const { name, value } = e.target;
-    setRegTouched((prev) => ({ ...prev, [name]: true }));
-    setTimeout(() => {
-      validateRegField(name, value);
-    }, 0);
-  };
-
-  const handleRegSubmit = async (e) => {
+  async function handleRegister(e) {
     e.preventDefault();
     setApiError("");
-    const nameErr = validateDisplayName(regFields.displayName);
-    const emailErr = validateEmail(regFields.email);
-    const passErr = validatePassword(regFields.password, true);
-    setRegErrors({ displayName: nameErr, email: emailErr, password: passErr });
-    setRegTouched({ displayName: true, email: true, password: true });
-    if (nameErr || emailErr || passErr) return;
-
+    const ne = validateName(rf.name), ee = validateEmail(rf.email), pe = validatePassword(rf.password, true);
+    setRe({ name: ne, email: ee, password: pe });
+    setRt({ name: true, email: true, password: true });
+    if (ne || ee || pe) return;
     setLoading(true);
     try {
-      const response = await apiClient.post("/auth/register", {
-        email: regFields.email,
-        password: regFields.password,
-        display_name: regFields.displayName,
-      });
-      // Auto-login if tokens returned
-      if (response.data?.access_token) {
-        login(response.data);
-        navigate("/dashboard");
-      } else {
-        setSuccessMessage("Registration successful! Please log in.");
-        switchMode("login");
-      }
+      const res = await apiClient.post("/auth/register", { email: rf.email, password: rf.password, display_name: rf.name });
+      if (res.data?.access_token) { login(res.data); navigate("/dashboard"); }
+      else { setSuccess("Account created! Please log in."); switchMode("login"); }
     } catch (err) {
-      if (err.response?.status === 409) {
-        setApiError("Email already registered");
-      } else {
-        setApiError(err.response?.data?.detail || "Registration failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+      setApiError(err.response?.status === 409 ? "Email already registered" : err.response?.data?.detail || "Registration failed");
+    } finally { setLoading(false); }
+  }
+
+  const inputCls = (err, touched) => `form-input${err && touched ? " error" : ""}`;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.tabs}>
-          <button
-            style={{ ...styles.tab, ...(mode === "login" ? styles.activeTab : {}) }}
-            onClick={() => switchMode("login")}
-            type="button"
-          >
-            Login
-          </button>
-          <button
-            style={{ ...styles.tab, ...(mode === "register" ? styles.activeTab : {}) }}
-            onClick={() => switchMode("register")}
-            type="button"
-          >
-            Register
-          </button>
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      padding: "24px 16px",
+    }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontSize: 52, marginBottom: 8 }}>💰</div>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#fff" }}>Expense Manager</h1>
+          <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 14 }}>Track every rupee, every day</p>
         </div>
 
-        {successMessage && <p style={styles.successText}>{successMessage}</p>}
-        {apiError && <p style={styles.apiError}>{apiError}</p>}
+        {/* Card */}
+        <div style={{ background: "#fff", borderRadius: 24, padding: "32px 28px", boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
+          {/* Tabs */}
+          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 4, marginBottom: 28 }}>
+            {["login", "register"].map(m => (
+              <button key={m} onClick={() => switchMode(m)} style={{
+                flex: 1, padding: "9px 0", border: "none", borderRadius: 10, cursor: "pointer",
+                fontSize: 14, fontWeight: 600, transition: "all 0.2s",
+                background: mode === m ? "#fff" : "transparent",
+                color: mode === m ? "#4f46e5" : "#64748b",
+                boxShadow: mode === m ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
+              }}>
+                {m === "login" ? "Sign In" : "Create Account"}
+              </button>
+            ))}
+          </div>
 
-        {mode === "login" ? (
-          <form onSubmit={handleLoginSubmit} noValidate>
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                style={{ ...styles.input, ...(loginErrors.email && loginTouched.email ? styles.inputError : {}) }}
-                type="email"
-                name="email"
-                value={loginFields.email}
-                onChange={handleLoginChange}
-                onBlur={handleLoginBlur}
-                autoComplete="email"
-              />
-              {loginTouched.email && loginErrors.email && (
-                <p style={styles.errorText}>{loginErrors.email}</p>
-              )}
+          {success && (
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", marginBottom: 20, color: "#16a34a", fontSize: 14, fontWeight: 500 }}>
+              ✓ {success}
             </div>
-
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="login-password">Password</label>
-              <input
-                id="login-password"
-                style={{ ...styles.input, ...(loginErrors.password && loginTouched.password ? styles.inputError : {}) }}
-                type="password"
-                name="password"
-                value={loginFields.password}
-                onChange={handleLoginChange}
-                onBlur={handleLoginBlur}
-                autoComplete="current-password"
-              />
-              {loginTouched.password && loginErrors.password && (
-                <p style={styles.errorText}>{loginErrors.password}</p>
-              )}
+          )}
+          {apiError && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", marginBottom: 20, color: "#dc2626", fontSize: 14, fontWeight: 500 }}>
+              ✕ {apiError}
             </div>
+          )}
 
-            <button
-              type="submit"
-              style={{ ...styles.submitBtn, ...(loading ? styles.submitBtnDisabled : {}) }}
-              disabled={loading}
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleRegSubmit} noValidate>
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="reg-displayName">Display Name</label>
-              <input
-                id="reg-displayName"
-                style={{ ...styles.input, ...(regErrors.displayName && regTouched.displayName ? styles.inputError : {}) }}
-                type="text"
-                name="displayName"
-                value={regFields.displayName}
-                onChange={handleRegChange}
-                onBlur={handleRegBlur}
-                autoComplete="name"
-              />
-              {regTouched.displayName && regErrors.displayName && (
-                <p style={styles.errorText}>{regErrors.displayName}</p>
-              )}
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="reg-email">Email</label>
-              <input
-                id="reg-email"
-                style={{ ...styles.input, ...(regErrors.email && regTouched.email ? styles.inputError : {}) }}
-                type="email"
-                name="email"
-                value={regFields.email}
-                onChange={handleRegChange}
-                onBlur={handleRegBlur}
-                autoComplete="email"
-              />
-              {regTouched.email && regErrors.email && (
-                <p style={styles.errorText}>{regErrors.email}</p>
-              )}
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="reg-password">Password</label>
-              <input
-                id="reg-password"
-                style={{ ...styles.input, ...(regErrors.password && regTouched.password ? styles.inputError : {}) }}
-                type="password"
-                name="password"
-                value={regFields.password}
-                onChange={handleRegChange}
-                onBlur={handleRegBlur}
-                autoComplete="new-password"
-              />
-              {regTouched.password && regErrors.password && (
-                <p style={styles.errorText}>{regErrors.password}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              style={{ ...styles.submitBtn, ...(loading ? styles.submitBtnDisabled : {}) }}
-              disabled={loading}
-            >
-              {loading ? "Registering..." : "Register"}
-            </button>
-          </form>
-        )}
+          {mode === "login" ? (
+            <form onSubmit={handleLogin} noValidate>
+              <Field label="Email address" id="l-email" error={le.email} touched={lt.email}>
+                <input id="l-email" className={inputCls(le.email, lt.email)} type="email" name="email"
+                  value={lf.email} placeholder="you@example.com"
+                  onChange={e => { setLf(p => ({ ...p, email: e.target.value })); if (lt.email) validateLogin("email", e.target.value); }}
+                  onBlur={e => { setLt(p => ({ ...p, email: true })); validateLogin("email", e.target.value); }}
+                  autoComplete="email" />
+              </Field>
+              <Field label="Password" id="l-pass" error={le.password} touched={lt.password}>
+                <input id="l-pass" className={inputCls(le.password, lt.password)} type="password" name="password"
+                  value={lf.password} placeholder="••••••••"
+                  onChange={e => { setLf(p => ({ ...p, password: e.target.value })); if (lt.password) validateLogin("password", e.target.value); }}
+                  onBlur={e => { setLt(p => ({ ...p, password: true })); validateLogin("password", e.target.value); }}
+                  autoComplete="current-password" />
+              </Field>
+              <button type="submit" disabled={loading} style={{
+                width: "100%", padding: "13px", marginTop: 8,
+                background: loading ? "#a5b4fc" : "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                color: "#fff", border: "none", borderRadius: 12,
+                fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 14px rgba(79,70,229,0.35)", transition: "opacity 0.15s",
+              }}>
+                {loading ? "Signing in..." : "Sign In →"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister} noValidate>
+              <Field label="Your name" id="r-name" error={re.name} touched={rt.name}>
+                <input id="r-name" className={inputCls(re.name, rt.name)} type="text" name="name"
+                  value={rf.name} placeholder="Rahul Sharma"
+                  onChange={e => { setRf(p => ({ ...p, name: e.target.value })); if (rt.name) validateReg("name", e.target.value); }}
+                  onBlur={e => { setRt(p => ({ ...p, name: true })); validateReg("name", e.target.value); }}
+                  autoComplete="name" />
+              </Field>
+              <Field label="Email address" id="r-email" error={re.email} touched={rt.email}>
+                <input id="r-email" className={inputCls(re.email, rt.email)} type="email" name="email"
+                  value={rf.email} placeholder="you@example.com"
+                  onChange={e => { setRf(p => ({ ...p, email: e.target.value })); if (rt.email) validateReg("email", e.target.value); }}
+                  onBlur={e => { setRt(p => ({ ...p, email: true })); validateReg("email", e.target.value); }}
+                  autoComplete="email" />
+              </Field>
+              <Field label="Password (min 8 chars)" id="r-pass" error={re.password} touched={rt.password}>
+                <input id="r-pass" className={inputCls(re.password, rt.password)} type="password" name="password"
+                  value={rf.password} placeholder="••••••••"
+                  onChange={e => { setRf(p => ({ ...p, password: e.target.value })); if (rt.password) validateReg("password", e.target.value); }}
+                  onBlur={e => { setRt(p => ({ ...p, password: true })); validateReg("password", e.target.value); }}
+                  autoComplete="new-password" />
+              </Field>
+              <button type="submit" disabled={loading} style={{
+                width: "100%", padding: "13px", marginTop: 8,
+                background: loading ? "#a5b4fc" : "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                color: "#fff", border: "none", borderRadius: 12,
+                fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 14px rgba(79,70,229,0.35)",
+              }}>
+                {loading ? "Creating account..." : "Create Account →"}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
