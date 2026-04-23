@@ -52,7 +52,7 @@ export default function ExpenseFormModal({ isOpen, onClose, onSuccess, expense }
     if (!validateAll()) return;
     setSaving(true); setApiError("");
     try {
-      const payload = { amount: parseFloat(form.amount), category: form.category, date: form.date, description: form.description };
+      const payload = { amount: parseFloat(form.amount), category: form.category, date: form.date, description: form.description || null };
       if (expense) await apiClient.put(`/expenses/${expense.id}`, payload);
       else         await apiClient.post("/expenses", payload);
       onSuccess(); onClose();

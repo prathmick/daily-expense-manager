@@ -9,7 +9,8 @@ import ReportPage from "./pages/ReportPage";
 import BudgetPage from "./pages/BudgetPage";
 
 function PrivateRoute({ children }) {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
+  if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 32 }}>💰</div>;
   return token ? children : <Navigate to="/auth" replace />;
 }
 
@@ -23,7 +24,8 @@ function PrivateLayout({ children }) {
 }
 
 function RootRedirect() {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
+  if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 32 }}>💰</div>;
   return <Navigate to={token ? "/dashboard" : "/auth"} replace />;
 }
 

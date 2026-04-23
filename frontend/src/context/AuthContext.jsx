@@ -15,6 +15,7 @@ function decodeJwtPayload(token) {
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // true until localStorage is read
 
   useEffect(() => {
     const stored = localStorage.getItem("access_token");
@@ -25,6 +26,7 @@ export function AuthProvider({ children }) {
         setUser({ id: parseInt(payload.sub) });
       }
     }
+    setLoading(false); // done reading localStorage
   }, []);
 
   function login(tokenResponse) {
@@ -46,7 +48,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
