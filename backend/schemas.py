@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Any
 from enum import Enum
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -83,23 +83,36 @@ class ExpenseCreateOut(ExpenseOut):
 
 
 class ExpenseUpdate(BaseModel):
-    model_config = {"from_attributes": True}
-
     amount: Optional[float] = None
     category: Optional[CategoryEnum] = None
-    date: Optional[date] = None
+    date: Optional[Any] = None
     description: Optional[str] = None
 
     @field_validator("amount", mode="before")
     @classmethod
-    def amount_positive(cls, v: Optional[float]) -> Optional[float]:
+    def amount_positive(cls, v):
         if v is not None and float(v) <= 0:
             raise ValueError("amount must be greater than 0")
         return v
 
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        if v is None:
+            return None
+        from datetime import date as date_type
+        if isinstance(v, date_type):
+            return v
+        if isinstance(v, str):
+            try:
+                return date_type.fromisoformat(v)
+            except ValueError:
+                raise ValueError("date must be in ISO 8601 format (YYYY-MM-DD)")
+        return v
+
     @field_validator("description", mode="before")
     @classmethod
-    def description_max_length(cls, v: Optional[str]) -> Optional[str]:
+    def description_max_length(cls, v):
         if v is not None and len(str(v)) > 255:
             raise ValueError("description must be at most 255 characters")
         return v
