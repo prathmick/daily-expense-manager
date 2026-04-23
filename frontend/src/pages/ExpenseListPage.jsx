@@ -20,6 +20,46 @@ function formatDate(s) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function InlineEdit({ label, value, onSave, saving }) {
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState(String(value || ""));
+
+  useEffect(() => { setInput(String(value || "")); }, [value]);
+
+  if (!editing) {
+    return (
+      <div>
+        <p style={{ margin: "0 0 2px", fontSize: 10, opacity: 0.55, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16, fontWeight: 800 }}>{value ? fmt(value) : "—"}</span>
+          <button onClick={() => setEditing(true)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 6, padding: "3px 8px", color: "#fff", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+            {value ? "Edit" : "Set"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ margin: "0 0 4px", fontSize: 10, opacity: 0.55, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ opacity: 0.7, fontSize: 13 }}>₹</span>
+        <input type="number" min="0" step="0.01" value={input} onChange={e => setInput(e.target.value)} autoFocus
+          style={{ width: 110, padding: "6px 8px", borderRadius: 8, border: "none", fontSize: 14, background: "rgba(255,255,255,0.15)", color: "#fff", outline: "none" }} />
+        <button onClick={async () => { await onSave(parseFloat(input)); setEditing(false); }} disabled={saving}
+          style={{ background: "#4f46e5", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
+          {saving ? "..." : "Save"}
+        </button>
+        <button onClick={() => setEditing(false)}
+          style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 8, padding: "6px 10px", color: "#fff", fontSize: 12, cursor: "pointer" }}>
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ExpenseListPage() {
   const [expenses, setExpenses]       = useState([]);
   const [loading, setLoading]         = useState(false);
@@ -30,15 +70,12 @@ export default function ExpenseListPage() {
   const [modalOpen, setModalOpen]     = useState(false);
   const [editing, setEditing]         = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-
-  // Balance
-  const [balanceData, setBalanceData]     = useState(null);
-  const [balanceInput, setBalanceInput]   = useState("");
-  const [savingBal, setSavingBal]         = useState(false);
-  const [editingBal, setEditingBal]       = useState(false);
+  const [balanceData, setBalanceData] = useState(null);
+  const [savingBal, setSavingBal]     = useState(false);
+  const [savingSal, setSavingSal]     = useState(false);
 
   const fetchBalance = useCallback(async () => {
-    try { const r = await apiClient.get("/user/balance"); setBalanceData(r.data); setBalanceInput(String(r.data.balance)); }
+    try { const r = await apiClient.get("/user/balance"); setBalanceData(r.data); }
     catch {}
   }, []);
 
@@ -58,13 +95,20 @@ export default function ExpenseListPage() {
 
   useEffect(() => { fetchBalance(); fetchExpenses(filters); }, [fetchBalance, fetchExpenses]);
 
-  async function saveBalance() {
-    const v = parseFloat(balanceInput);
-    if (isNaN(v) || v < 0) { setError("Enter a valid balance"); return; }
+  async function saveBalance(v) {
+    if (isNaN(v) || v < 0) return;
     setSavingBal(true);
-    try { const r = await apiClient.put("/user/balance", { balance: v }); setBalanceData(r.data); setEditingBal(false); }
-    catch (e) { setError(e.response?.data?.detail || "Failed to save balance."); }
+    try { const r = await apiClient.put("/user/balance", { balance: v }); setBalanceData(r.data); }
+    catch (e) { setError(e.response?.data?.detail || "Failed to save."); }
     finally { setSavingBal(false); }
+  }
+
+  async function saveSalary(v) {
+    if (isNaN(v) || v < 0) return;
+    setSavingSal(true);
+    try { const r = await apiClient.put("/user/salary", { monthly_salary: v }); setBalanceData(r.data); }
+    catch (e) { setError(e.response?.data?.detail || "Failed to save."); }
+    finally { setSavingSal(false); }
   }
 
   async function handleDelete(id) {
@@ -75,62 +119,59 @@ export default function ExpenseListPage() {
 
   const totalPages = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
   const paginated  = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const balColor   = !balanceData ? "#1a1d2e" : balanceData.current_balance < 0 ? "#ef4444" : "#10b981";
+
+  // Monthly salary progress
+  const salaryPct = balanceData?.monthly_salary > 0
+    ? Math.min((balanceData.month_expenses / balanceData.monthly_salary) * 100, 100)
+    : 0;
+  const salaryBarColor = salaryPct >= 100 ? "#ef4444" : salaryPct >= 80 ? "#f97316" : "#10b981";
 
   return (
     <div className="page-content">
 
-      {/* ── Balance Hero Card ── */}
-      <div style={{
-        background: "linear-gradient(135deg,#0f172a,#1e293b)",
-        borderRadius: 16, padding: "16px", marginBottom: 14, color: "#fff",
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+      {/* ── Monthly Salary Tracker ── */}
+      <div style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)", borderRadius: 16, padding: "16px", marginBottom: 14, color: "#fff", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -20, width: 90, height: 90, background: "rgba(255,255,255,0.07)", borderRadius: "50%" }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 12 }}>
+          <InlineEdit label="Monthly Salary" value={balanceData?.monthly_salary} onSave={saveSalary} saving={savingSal} />
+          <InlineEdit label="Total Balance" value={balanceData?.balance} onSave={saveBalance} saving={savingBal} />
+        </div>
+
+        {/* This month progress */}
+        {balanceData?.monthly_salary > 0 && (
           <div>
-            <p style={{ margin: "0 0 4px", fontSize: 11, opacity: 0.6, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>Current Balance</p>
-            <div style={{ fontSize: 26, fontWeight: 800, color: balColor, letterSpacing: "-0.5px" }}>
-              {balanceData ? fmt(balanceData.current_balance) : "—"}
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, opacity: 0.75, fontWeight: 600 }}>THIS MONTH SPENT</span>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>
+                {fmt(balanceData.month_expenses)} / {fmt(balanceData.monthly_salary)}
+              </span>
             </div>
-            <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.5 }}>INITIAL</p>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{balanceData ? fmt(balanceData.balance) : "—"}</p>
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.5 }}>SPENT</p>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f87171" }}>{balanceData ? fmt(balanceData.total_expenses) : "—"}</p>
-              </div>
+            <div style={{ height: 8, background: "rgba(255,255,255,0.2)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${salaryPct}%`, background: salaryBarColor, borderRadius: 999, transition: "width 0.4s ease" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+              <span style={{ fontSize: 11, opacity: 0.7 }}>{salaryPct.toFixed(0)}% used</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: balanceData.month_remaining >= 0 ? "#86efac" : "#fca5a5" }}>
+                {balanceData.month_remaining >= 0 ? `${fmt(balanceData.month_remaining)} left` : `${fmt(Math.abs(balanceData.month_remaining))} over`}
+              </span>
             </div>
           </div>
+        )}
+
+        {/* Current balance row */}
+        <div style={{ marginTop: balanceData?.monthly_salary > 0 ? 12 : 0, paddingTop: balanceData?.monthly_salary > 0 ? 12 : 0, borderTop: balanceData?.monthly_salary > 0 ? "1px solid rgba(255,255,255,0.15)" : "none", display: "flex", gap: 20 }}>
           <div>
-            {editingBal ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14, opacity: 0.7 }}>₹</span>
-                  <input type="number" min="0" step="0.01" value={balanceInput}
-                    onChange={e => setBalanceInput(e.target.value)}
-                    style={{ width: 120, padding: "8px 10px", borderRadius: 10, border: "none", fontSize: 14, background: "rgba(255,255,255,0.15)", color: "#fff", outline: "none" }}
-                    autoFocus />
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={saveBalance} disabled={savingBal} style={{ padding: "7px 14px", background: "#4f46e5", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                    {savingBal ? "..." : "Save"}
-                  </button>
-                  <button onClick={() => setEditingBal(false)} style={{ padding: "7px 12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setEditingBal(true)} style={{
-                padding: "9px 16px", background: "rgba(255,255,255,0.12)", color: "#fff",
-                border: "1px solid rgba(255,255,255,0.2)", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer",
-              }}>
-                {balanceData?.balance ? "✏️ Edit" : "➕ Set Balance"}
-              </button>
-            )}
+            <p style={{ margin: "0 0 2px", fontSize: 10, opacity: 0.55, fontWeight: 600, textTransform: "uppercase" }}>CURRENT BALANCE</p>
+            <span style={{ fontSize: 18, fontWeight: 800, color: (balanceData?.current_balance ?? 0) < 0 ? "#fca5a5" : "#86efac" }}>
+              {balanceData ? fmt(balanceData.current_balance) : "—"}
+            </span>
+          </div>
+          <div>
+            <p style={{ margin: "0 0 2px", fontSize: 10, opacity: 0.55, fontWeight: 600, textTransform: "uppercase" }}>TOTAL SPENT</p>
+            <span style={{ fontSize: 18, fontWeight: 800, color: "#fca5a5" }}>
+              {balanceData ? fmt(balanceData.total_expenses) : "—"}
+            </span>
           </div>
         </div>
       </div>
@@ -139,10 +180,7 @@ export default function ExpenseListPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1a1d2e" }}>Expenses</h1>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setShowFilters(f => !f)} style={{
-            padding: "9px 14px", background: showFilters ? "#ede9fe" : "#f1f5f9",
-            color: showFilters ? "#4f46e5" : "#64748b", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>
+          <button onClick={() => setShowFilters(f => !f)} style={{ padding: "9px 14px", background: showFilters ? "#ede9fe" : "#f1f5f9", color: showFilters ? "#4f46e5" : "#64748b", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             🔍 Filter
           </button>
           <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary" style={{ padding: "9px 16px" }}>
@@ -151,51 +189,47 @@ export default function ExpenseListPage() {
         </div>
       </div>
 
-      {/* ── Filters (collapsible) ── */}
+      {/* ── Filters ── */}
       {showFilters && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-            <div style={{ flex: "1 1 140px" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>From</label>
-              <input type="date" value={pending.startDate} onChange={e => setPending(f => ({ ...f, startDate: e.target.value }))}
-                className="form-input" style={{ padding: "9px 12px", fontSize: 14 }} />
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {[{ label: "From", key: "startDate" }, { label: "To", key: "endDate" }].map(({ label, key }) => (
+              <div key={key} style={{ flex: "1 1 130px" }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>{label}</label>
+                <input type="date" value={pending[key]} onChange={e => setPending(f => ({ ...f, [key]: e.target.value }))}
+                  className="form-input" style={{ padding: "9px 10px", fontSize: 13 }} />
+              </div>
+            ))}
+            <div style={{ flex: "1 1 150px" }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Search</label>
+              <input type="text" placeholder="Search..." value={pending.keyword} onChange={e => setPending(f => ({ ...f, keyword: e.target.value }))}
+                className="form-input" style={{ padding: "9px 10px", fontSize: 13 }} />
             </div>
-            <div style={{ flex: "1 1 140px" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>To</label>
-              <input type="date" value={pending.endDate} onChange={e => setPending(f => ({ ...f, endDate: e.target.value }))}
-                className="form-input" style={{ padding: "9px 12px", fontSize: 14 }} />
-            </div>
-            <div style={{ flex: "1 1 160px" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Search</label>
-              <input type="text" placeholder="Search description..." value={pending.keyword}
-                onChange={e => setPending(f => ({ ...f, keyword: e.target.value }))}
-                className="form-input" style={{ padding: "9px 12px", fontSize: 14 }} />
-            </div>
-            <div style={{ flex: "1 1 140px" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Category</label>
+            <div style={{ flex: "1 1 130px" }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Category</label>
               <select value={pending.category} onChange={e => setPending(f => ({ ...f, category: e.target.value }))}
-                className="form-input" style={{ padding: "9px 12px", fontSize: 14 }}>
+                className="form-input" style={{ padding: "9px 10px", fontSize: 13 }}>
                 {CATEGORIES.map(c => <option key={c} value={c === "All" ? "" : c}>{c}</option>)}
               </select>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button onClick={() => { setFilters({ ...pending }); fetchExpenses(pending); }} className="btn-primary" style={{ padding: "9px 20px" }}>Apply</button>
-            <button onClick={() => { const e = { startDate: "", endDate: "", keyword: "", category: "" }; setPending(e); setFilters(e); fetchExpenses(e); }} className="btn-secondary" style={{ padding: "9px 16px" }}>Clear</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button onClick={() => { setFilters({ ...pending }); fetchExpenses(pending); }} className="btn-primary" style={{ padding: "9px 18px" }}>Apply</button>
+            <button onClick={() => { const e = { startDate: "", endDate: "", keyword: "", category: "" }; setPending(e); setFilters(e); fetchExpenses(e); }} className="btn-secondary" style={{ padding: "9px 14px" }}>Clear</button>
           </div>
         </div>
       )}
 
-      {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", marginBottom: 12, color: "#dc2626", fontSize: 14 }}>{error}</div>}
+      {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", marginBottom: 12, color: "#dc2626", fontSize: 13 }}>{error}</div>}
 
       {/* ── Expense List ── */}
       {loading ? (
-        <div>{[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 72, marginBottom: 10, borderRadius: 14 }} />)}</div>
+        <div>{[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 68, marginBottom: 8, borderRadius: 12 }} />)}</div>
       ) : expenses.length === 0 ? (
         <div className="empty-state card">
           <div className="empty-state-icon">💸</div>
           <div className="empty-state-text">No expenses found</div>
-          <p style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0 0" }}>Tap "+ Add" to record your first expense</p>
+          <p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0" }}>Tap "+ Add" to record your first expense</p>
         </div>
       ) : (
         <>
@@ -209,28 +243,23 @@ export default function ExpenseListPage() {
                 <div className="expense-info">
                   <div className="expense-category">{exp.category}</div>
                   <div className="expense-desc">{exp.description || "No description"}</div>
+                  <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{formatDate(exp.date)}</div>
                 </div>
                 <div className="expense-right">
                   <div className="expense-amount">-{fmt(exp.amount)}</div>
-                  <div className="expense-date">{formatDate(exp.date)}</div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: 4 }}>
                   <button onClick={() => { setEditing(exp); setModalOpen(true); }}
-                    style={{ padding: "5px 10px", background: "#f1f5f9", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer", color: "#475569", fontWeight: 500 }}>
-                    ✏️
-                  </button>
+                    style={{ padding: "5px 8px", background: "#f1f5f9", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>✏️</button>
                   <button onClick={() => handleDelete(exp.id)}
-                    style={{ padding: "5px 10px", background: "#fef2f2", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer", color: "#dc2626", fontWeight: 500 }}>
-                    🗑️
-                  </button>
+                    style={{ padding: "5px 8px", background: "#fef2f2", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>🗑️</button>
                 </div>
               </div>
             );
           })}
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 14 }}>
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                 className="btn-secondary" style={{ padding: "8px 16px", opacity: page === 1 ? 0.4 : 1 }}>← Prev</button>
               <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>{page} / {totalPages}</span>
