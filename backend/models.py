@@ -15,6 +15,7 @@ class User(Base):
     display_name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     balance = Column(Float, nullable=False, default=0.0)
+    monthly_salary = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     expenses = relationship("Expense", back_populates="owner", cascade="all, delete-orphan")

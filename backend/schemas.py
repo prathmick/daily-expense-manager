@@ -170,6 +170,7 @@ class ErrorResponse(BaseModel):
 
 class BalanceSet(BaseModel):
     balance: float
+    monthly_salary: Optional[float] = None
 
     @field_validator("balance")
     @classmethod
@@ -181,5 +182,8 @@ class BalanceSet(BaseModel):
 
 class BalanceOut(BaseModel):
     balance: float
+    monthly_salary: float
     total_expenses: float
     current_balance: float
+    month_expenses: float
+    month_remaining: float
