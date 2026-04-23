@@ -80,7 +80,7 @@ class ExpenseService:
                 detail="Not authorized to update this expense",
             )
 
-        update_data = expense_in.model_dump(exclude_unset=True)
+        update_data = expense_in.model_dump(exclude_unset=True, exclude_none=False)
         for field, value in update_data.items():
             # Store enum value as string
             if hasattr(value, "value"):

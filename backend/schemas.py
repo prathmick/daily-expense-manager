@@ -83,22 +83,24 @@ class ExpenseCreateOut(ExpenseOut):
 
 
 class ExpenseUpdate(BaseModel):
+    model_config = {"from_attributes": True}
+
     amount: Optional[float] = None
     category: Optional[CategoryEnum] = None
     date: Optional[date] = None
     description: Optional[str] = None
 
-    @field_validator("amount")
+    @field_validator("amount", mode="before")
     @classmethod
     def amount_positive(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v <= 0:
+        if v is not None and float(v) <= 0:
             raise ValueError("amount must be greater than 0")
         return v
 
-    @field_validator("description")
+    @field_validator("description", mode="before")
     @classmethod
     def description_max_length(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and len(v) > 255:
+        if v is not None and len(str(v)) > 255:
             raise ValueError("description must be at most 255 characters")
         return v
 
